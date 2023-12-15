@@ -130,7 +130,7 @@ app.post('/save', passport.authenticate('jwt-strategy', {
 
     try {
         const gameData = new GameData({
-            data: JSON.parse(req.body.gameData),
+            data: JSON.parse(req.body.gameData ? req.body.gameData : "[]"),
             userId: req.user._id
         });
 

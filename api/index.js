@@ -18,9 +18,11 @@ import User from "./db/User.js";
 import jwt from "jsonwebtoken"
 
 // Local Strategy
-passport.use("local", new Strategy(async (email, password, done) => {
+passport.use("local", new Strategy(async (username, password, done) => {
     try {
-        const user = await User.findOne({ email: email });
+        console.log(username)
+        console.log(password)
+        const user = await User.findOne({ email: username });
 
         if (!user) {
             return done(null, false, {
@@ -28,14 +30,15 @@ passport.use("local", new Strategy(async (email, password, done) => {
             })
         }
 
-        user.login(password).then(() => {
-            return done(null, user)
-         }).catch((err) => {
-           return done(err, false, {
-             message: 'Password not matched.'
-           })
-         })
-
+        try {
+            console.log("about to login....");
+            await user.login(password);
+            return done(null, user);
+        } catch(err) {
+            return done(err, false, {
+                message: 'Password not matched'
+            })
+        }
     } catch (err) {
         return done(err);
     }
@@ -92,6 +95,32 @@ app.post('/signup', async (req, res) => {
         return res.json({ err: err });
     }
   });
+
+
+  app.post('/signupmany', async (req, res) => {
+      const savedUsers = [];
+      if (req.body.users) {
+        const users = JSON.parse(req.body.users);
+        for (const u of users) {
+            var user = new User({
+                email: u.email,
+                password: u.password
+            })
+
+        try {
+            await user.save();
+            savedUsers.push(user);
+            // const token = jwt.sign({id: user.id}, process.env.JWT_SECRET)
+        } catch (err) {
+            console.error(err);
+            return res.json({ err: err });
+        }
+    } 
+    return res.json({ users: savedUsers });
+    } else {
+        return res.json({ err: "No users array was given!"});
+    }
+  })
 
   app.post('/login', passport.authenticate('local', {
     session: false

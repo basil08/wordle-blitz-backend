@@ -18,11 +18,9 @@ import User from "./db/User.js";
 import jwt from "jsonwebtoken"
 
 // Local Strategy
-passport.use("local", new Strategy(async (username, password, done) => {
+passport.use("local", new Strategy(async (email, password, done) => {
     try {
-        console.log(username)
-        console.log(password)
-        const user = await User.findOne({ email: username });
+        const user = await User.findOne({ email: email });
 
         if (!user) {
             return done(null, false, {
@@ -30,15 +28,14 @@ passport.use("local", new Strategy(async (username, password, done) => {
             })
         }
 
-        try {
-            console.log("about to login....");
-            await user.login(password);
-            return done(null, user);
-        } catch(err) {
-            return done(err, false, {
-                message: 'Password not matched'
-            })
-        }
+        user.login(password).then(() => {
+            return done(null, user)
+         }).catch((err) => {
+           return done(err, false, {
+             message: 'Passwords do not match!'
+           })
+         })
+
     } catch (err) {
         return done(err);
     }
@@ -124,7 +121,8 @@ app.post('/signup', async (req, res) => {
 
   app.post('/login', passport.authenticate('local', {
     session: false
-  }),  async (req, res, next) => {
+  }),
+ async (req, res, next) => {
     // make the gameEntry object
     const gameEntry = new GameEntry({
         userId: req.user._id,
@@ -133,6 +131,7 @@ app.post('/signup', async (req, res) => {
 
     await gameEntry.save();
     const token = jwt.sign({id: req.user.id}, process.env.JWT_SECRET)
+
     res.json({token: token})
   })
 

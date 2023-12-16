@@ -35,11 +35,15 @@ userSchema.pre('save', function(next) {
 // Password verification
 userSchema.methods.login = function(password) {
   var user = this
-  
+
   return new Promise((resolve, reject) => {
     bcrypt.compare(password, user.password, (err, result) => {
       if ( err ) { reject(err) }
-      resolve()
+      if (result){
+        resolve()  
+      } else {
+        reject("passwords do not match")
+      }
     })
   })
 }

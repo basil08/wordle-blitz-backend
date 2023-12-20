@@ -47,6 +47,7 @@ passport.use("local", new Strategy(async (email, password, done) => {
 import passportJWT  from "passport-jwt";
 import GameData from './db/GameData.js';
 import GameEntry from './db/GameEntry.js';
+import GameResult from './db/GameResult.js';
 const JWTStrategy = passportJWT.Strategy;
 const ExtractJWT = passportJWT.ExtractJwt;
 
@@ -71,8 +72,8 @@ const app = express();
 app.use(cors({ origin: "*" }))
 app.use(passport.initialize());
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }))
+app.use(bodyParser.json({ limit: "10mb", extended: true}));
+app.use(bodyParser.urlencoded({ limit: "10mb", parameterLimit: 50000, extended: true }))
 
 app.get("/", (req, res) => {
     res.json({ health: "ok"})
@@ -118,6 +119,48 @@ app.post('/signup', async (req, res) => {
         return res.json({ err: "No users array was given!"});
     }
   })
+
+  app.post('/saveresult', async (req, res) => {
+    if (req.body.gameResult) {
+      const gameResult = JSON.parse(req.body.gameResult);
+      for (const gr of gameResult) {
+        var gameResultObj = new GameResult({
+            name: gr.name ? gr.name : "Player",
+            score: gr.score,
+            total: gr.total,
+            wins: gr.wins,
+            loses: gr.loses,
+            averageTimePerSolve: gr.averageTimePerSolve,
+            data: gr.data,
+            email: gr.email,
+            userId: gr.userId
+        });
+
+        try {
+            await gameResultObj.save();
+        } catch(err) {
+            console.error(err);
+            return res.json({ err: err });
+        }
+    }
+    return res.json({ success: true });
+  }
+})
+
+app.post('/getResult', passport.authenticate('jwt-strategy', {
+    session: false
+}), async (req, res) => {
+    if (!req.body.userId) {
+        return res.json({ msg: "Want a userId!"})
+    }
+    
+    try {
+        const gameResult = await GameResult.findOne({ userId: req.body.userId});
+        return res.json(gameResult);
+    } catch(err) {
+        return res.json({ success: false, err: err });
+    }
+})
 
   app.post('/login', passport.authenticate('local', {
     session: false
